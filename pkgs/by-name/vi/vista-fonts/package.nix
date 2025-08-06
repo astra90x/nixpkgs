@@ -3,6 +3,7 @@
   stdenvNoCC,
   fetchurl,
   cabextract,
+  fontforge,
 }:
 
 stdenvNoCC.mkDerivation {
@@ -14,7 +15,7 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-xOdTVI0wkv/X3ThJEF4KJtm1oa/kbm5mf+fGiHiTcB8=";
   };
 
-  nativeBuildInputs = [ cabextract ];
+  nativeBuildInputs = [ cabextract fontforge ];
 
   unpackPhase = ''
     runHook preUnpack
@@ -30,10 +31,32 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
 
     mkdir -p $out/share/fonts/truetype
-    cp *.ttf *.ttc $out/share/fonts/truetype
 
-    # Set up no-op font configs to override any aliases set up by
-    # other packages.
+    fontforge -c "
+    import fontforge
+    import sys
+
+    def removeBitmaps(font):
+      for table in ('EBDT', 'EBLC', 'EBSC'):
+        font.setTableData(table, None)
+
+    for path in sys.argv[1:]:
+      fonts = fontforge.fontsInFile(path)
+      if len(fonts) == 2:
+        font1 = fontforge.open(f'{path}({fonts[0]})')
+        font2 = fontforge.open(f'{path}({fonts[1]})')
+        removeBitmaps(font1)
+        removeBitmaps(font2)
+        font1.generateTtc(f'$out/share/fonts/truetype/{path}', font2, layer=font.activeLayer)
+      else:
+        font = fontforge.open(path)
+        removeBitmaps(font)
+        font.generate(f'$out/share/fonts/truetype/{path}')
+    " calibri* cambria*
+
+    cp -n *.ttf *.ttc $out/share/fonts/truetype
+
+    # Set up no-op font configs to override any aliases set up by other packages.
     mkdir -p $out/etc/fonts/conf.d
     for name in Calibri Cambria Candara Consolas Constantia Corbel ; do
       substitute ${./no-op.conf} $out/etc/fonts/conf.d/30-''${name,,}.conf \
