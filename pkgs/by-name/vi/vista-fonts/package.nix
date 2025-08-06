@@ -15,7 +15,10 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-xOdTVI0wkv/X3ThJEF4KJtm1oa/kbm5mf+fGiHiTcB8=";
   };
 
-  nativeBuildInputs = [ cabextract fontforge ];
+  nativeBuildInputs = [
+    cabextract
+    fontforge
+  ];
 
   unpackPhase = ''
     runHook preUnpack
