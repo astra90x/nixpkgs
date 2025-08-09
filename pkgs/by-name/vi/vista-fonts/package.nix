@@ -35,6 +35,7 @@ stdenvNoCC.mkDerivation {
 
     mkdir -p $out/share/fonts/truetype
 
+    # Remove the embedded bitmaps from Calibri and Cambria because they have very low resolutions.
     fontforge -c "
     import fontforge
     import sys
@@ -44,17 +45,13 @@ stdenvNoCC.mkDerivation {
         font.setTableData(table, None)
 
     for path in sys.argv[1:]:
-      fonts = fontforge.fontsInFile(path)
-      if len(fonts) == 2:
-        font1 = fontforge.open(f'{path}({fonts[0]})')
-        font2 = fontforge.open(f'{path}({fonts[1]})')
-        removeBitmaps(font1)
-        removeBitmaps(font2)
-        font1.generateTtc(f'$out/share/fonts/truetype/{path}', font2, layer=font.activeLayer)
-      else:
-        font = fontforge.open(path)
+      fonts = [fontforge.open(f'{path}({font})') for font in fontforge.fontsInFile(path)]
+      for font in fonts:
         removeBitmaps(font)
-        font.generate(f'$out/share/fonts/truetype/{path}')
+      if len(fonts) > 1:
+        fonts[0].generateTtc(f'$out/share/fonts/truetype/{path}', fonts[1:], layer=font.activeLayer)
+      else:
+        fonts[0].generate(f'$out/share/fonts/truetype/{path}')
     " calibri* cambria*
 
     cp -n *.ttf *.ttc $out/share/fonts/truetype
